@@ -19,13 +19,13 @@ pipeline {
 
         stage('Build & Install Deps') {
             steps {
-                sh 'mvn dependency:resolve -B'
+                bat 'mvn dependency:resolve -B'
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh 'mvn test -B'
+                bat 'mvn test -B'
             }
         }
 
