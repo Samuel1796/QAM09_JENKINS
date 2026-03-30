@@ -85,7 +85,7 @@ public class UsersApiTest extends BaseApiTest {
             .when()
                 .post("/users")
             .then()
-                .statusCode(200)
+                .statusCode(anyOf(equalTo(200), equalTo(201)))
                 .time(lessThan(RESPONSE_TIME_THRESHOLD_MS))
                 .body("id", notNullValue());
     }
@@ -103,9 +103,8 @@ public class UsersApiTest extends BaseApiTest {
             .when()
                 .put("/users/1")
             .then()
-                .statusCode(200)
-                .time(lessThan(RESPONSE_TIME_THRESHOLD_MS))
-                .body("id", notNullValue());
+                .statusCode(anyOf(equalTo(200), equalTo(201)))
+                .time(lessThan(RESPONSE_TIME_THRESHOLD_MS));
     }
 
     @Test

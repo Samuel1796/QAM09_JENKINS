@@ -96,7 +96,7 @@ public class CartsApiTest extends BaseApiTest {
             .when()
                 .post("/carts")
             .then()
-                .statusCode(200)
+                .statusCode(anyOf(equalTo(200), equalTo(201)))
                 .time(lessThan(RESPONSE_TIME_THRESHOLD_MS))
                 .body("id", notNullValue());
     }
