@@ -51,31 +51,39 @@ pipeline {
             archiveArtifacts artifacts: 'target/**/*.html',          allowEmptyArchive: true
 
             script {
-                // Parse failed test names from JUnit XML results
+                def buildStatus = currentBuild.currentResult ?: 'SUCCESS'
+                def color = buildStatus == 'SUCCESS' ? 'good' : 'danger'
+
+                // Extract failed test names from JUnit XML using powershell
                 def failedTests = ''
                 try {
-                    def xmlFiles = findFiles(glob: '**/surefire-reports/TEST-*.xml')
-                    def failures = []
-                    xmlFiles.each { f ->
-                        def xml = readFile(f.path)
-                        def matcher = xml =~ /testname="([^"]+)"[^>]*>[\s\S]*?<failure/
-                        matcher.each { m -> failures << m[1] }
-                        // Also catch <testcase name="..." ...><failure pattern
-                        def m2 = xml =~ /<testcase[^>]+name="([^"]+)"[^>]*>[\s\S]*?<failure/
-                        m2.each { m -> failures << m[1] }
-                    }
-                    if (failures) {
-                        failedTests = "\nFailed tests:\n" + failures.unique().collect { "  • ${it}" }.join("\n")
+                    def output = bat(
+                        returnStdout: true,
+                        script: '''@echo off
+powershell -Command "
+$files = Get-ChildItem -Path 'target\\surefire-reports' -Filter 'TEST-*.xml' -ErrorAction SilentlyContinue
+$failures = @()
+foreach ($f in $files) {
+    [xml]$xml = Get-Content $f.FullName
+    foreach ($tc in $xml.testsuite.testcase) {
+        if ($tc.failure -or $tc.error) {
+            $failures += $tc.name
+        }
+    }
+}
+if ($failures.Count -gt 0) { $failures -join '|' } else { '' }
+"'''
+                    ).trim()
+                    if (output) {
+                        failedTests = '\nFailed tests:\n' + output.split('\\|').collect { "  • ${it}" }.join('\n')
                     }
                 } catch (e) {
                     failedTests = ''
                 }
 
-                def buildStatus = currentBuild.currentResult ?: 'UNKNOWN'
-                def color = buildStatus == 'SUCCESS' ? 'good' : 'danger'
                 def msg = "${buildStatus}: Job '${env.JOB_NAME}' #${env.BUILD_NUMBER}${failedTests}\n${env.BUILD_URL}"
 
-                catchError(buildResult: currentBuild.currentResult) {
+                catchError(buildResult: buildStatus) {
                     slackSend(color: color, message: msg)
                 }
             }
