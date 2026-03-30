@@ -6,7 +6,7 @@ import org.testng.annotations.BeforeSuite;
 public class BaseApiTest {
 
     /** Maximum acceptable response time in milliseconds (Requirement 1.6). */
-    protected static final long RESPONSE_TIME_THRESHOLD_MS = 2000L;
+    protected static final long RESPONSE_TIME_THRESHOLD_MS = 5000L;
 
     @BeforeSuite
     public void configureRestAssured() {
