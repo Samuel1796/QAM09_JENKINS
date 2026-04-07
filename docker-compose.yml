@@ -9,19 +9,6 @@ services:
     volumes:
       - jenkins_home:/var/jenkins_home
 
-  jenkins-proxy:
-    # Caddy sits in front of Jenkins to make the instance easier to expose and route.
-    image: caddy:2
-    container_name: jenkins-proxy-compose
-    depends_on:
-      - jenkins
-    ports:
-      - "8081:8081"
-    environment:
-      - JENKINS_JOB=${JENKINS_JOB}
-    volumes:
-      # The Caddyfile defines the reverse-proxy behavior for the Jenkins frontend.
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
 
 volumes:
   # Keep Jenkins job metadata, plugins, and build history between container restarts.

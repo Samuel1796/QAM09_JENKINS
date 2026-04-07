@@ -1,15 +1,19 @@
 pipeline {
+    // Run on any available Jenkins executor/agent node.
     agent any
 
+    // Auto-provision configured tool installations for this pipeline run.
     tools {
         maven 'Maven 3.9'
         jdk 'JDK 17'
     }
 
+    // Trigger this pipeline when GitHub sends a push webhook event.
     triggers {
         githubPush()
     }
 
+    // Ordered build lifecycle; each stage is visible in Jenkins Stage View.
     stages {
         stage('Checkout') {
             steps {
@@ -28,6 +32,7 @@ pipeline {
         stage('Run Tests') {
             steps {
                 // Keep the pipeline moving if tests fail so we can still archive reports and notify Slack.
+                // buildResult='UNSTABLE' marks overall build yellow; stageResult='FAILURE' marks this stage red.
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     bat 'mvn test -B'
                 }
@@ -59,8 +64,11 @@ pipeline {
 
                 // Publish the Maven Surefire HTML summary from the standard target/site location.
                 publishHTML(target: [
+                    // allowMissing=true avoids hard failure if report generation is skipped/empty.
                     allowMissing         : true,
+                    // alwaysLinkToLastBuild keeps a stable link to the newest report.
                     alwaysLinkToLastBuild: true,
+                    // keepAll=true preserves report history per build.
                     keepAll              : true,
                     reportDir            : 'target/site',
                     reportFiles          : 'surefire-report.html',
@@ -70,6 +78,7 @@ pipeline {
         }
     }
 
+    // Post actions run after stages complete, regardless of success/failure.
     post {
         always {
             // Archive the raw test evidence and generated reports so they stay attached to the build record.
@@ -79,11 +88,13 @@ pipeline {
             archiveArtifacts artifacts: 'target/site/**',              allowEmptyArchive: true
 
             script {
+                // script { } allows imperative Groovy inside declarative pipeline syntax.
                 // Parse JUnit XML for summary counts and failed test names for Slack.
                 def buildStatus = currentBuild.currentResult ?: 'SUCCESS'
                 def color = buildStatus == 'SUCCESS' ? 'good' : (buildStatus == 'UNSTABLE' ? 'warning' : 'danger')
                 def reportText = ''
                 try {
+                    // Use PowerShell on Windows agents to aggregate all surefire XML testcases.
                     reportText = powershell(
                         returnStdout: true,
                         script: '''
@@ -127,6 +138,7 @@ $summaryLines -join "`n"
                 }
 
                 def summary = [:]
+                // Convert KEY=VALUE lines into a Groovy map for message templating.
                 reportText.readLines().each { line ->
                     def idx = line.indexOf('=')
                     if (idx > 0) {
@@ -155,6 +167,7 @@ ${failedTestsSection}
 """.stripIndent().trim()
 
                 try {
+                    // slackSend comes from the Slack plugin; catches errors so notification issues do not fail the build.
                     slackSend(color: color, message: msg)
                 } catch (notifyErr) {
                     echo "Slack notification failed: ${notifyErr}"
