@@ -19,7 +19,7 @@ public class AuthApiTest extends BaseApiTest {
             .when()
                 .post("/auth/login")
             .then()
-                .statusCode(anyOf(equalTo(200), equalTo(201)))
+                .statusCode(anyOf(equalTo(200), equalTo(202)))
                 .time(lessThan(RESPONSE_TIME_THRESHOLD_MS))
                 .body("token", notNullValue())
                 .body("token", not(emptyString()));
