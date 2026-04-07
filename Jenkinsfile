@@ -82,9 +82,9 @@ pipeline {
                 // Parse the JUnit XML so Slack can show the exact passed and failed test names.
                 def buildStatus = currentBuild.currentResult ?: 'SUCCESS'
                 def color = buildStatus == 'SUCCESS' ? 'good' : (buildStatus == 'UNSTABLE' ? 'warning' : 'danger')
-                def reportJson = ''
+                def reportText = ''
                 try {
-                    reportJson = powershell(
+                    reportText = powershell(
                         returnStdout: true,
                         script: '''
 $files = Get-ChildItem -Path 'target/surefire-reports' -Filter 'TEST-*.xml' -ErrorAction SilentlyContinue
@@ -111,21 +111,32 @@ foreach ($file in $files) {
     }
 }
 
-[pscustomobject]@{
-    total   = $total
-    passed  = $passed
-    failed  = $failed
-    skipped = $skipped
-} | ConvertTo-Json -Depth 4 -Compress
+$summaryLines = @(
+    "TOTAL=$total"
+    "PASSED=$($passed.Count)"
+    "FAILED=$($failed.Count)"
+    "SKIPPED=$skipped"
+    "PASSED_LIST=$(if ($passed.Count -gt 0) { $passed -join ' || ' } else { '__NONE__' })"
+    "FAILED_LIST=$(if ($failed.Count -gt 0) { $failed -join ' || ' } else { '__NONE__' })"
+)
+
+$summaryLines -join "`n"
 '''
                     ).trim()
                 } catch (e) {
-                    reportJson = '{"total":0,"passed":[],"failed":[],"skipped":0}'
+                    reportText = 'TOTAL=0\nPASSED=0\nFAILED=0\nSKIPPED=0\nPASSED_LIST=__NONE__\nFAILED_LIST=__NONE__'
                 }
 
-                def summary = new groovy.json.JsonSlurperClassic().parseText(reportJson)
-                def passedTests = summary.passed ?: []
-                def failedTests = summary.failed ?: []
+                def summary = [:]
+                reportText.readLines().each { line ->
+                    def idx = line.indexOf('=')
+                    if (idx > 0) {
+                        summary[line.substring(0, idx)] = line.substring(idx + 1)
+                    }
+                }
+
+                def passedTests = (summary.PASSED_LIST ?: '__NONE__') == '__NONE__' ? [] : (summary.PASSED_LIST.split(' \|\| ') as List)
+                def failedTests = (summary.FAILED_LIST ?: '__NONE__') == '__NONE__' ? [] : (summary.FAILED_LIST.split(' \|\| ') as List)
                 def formatTests = { List tests -> tests ? tests.collect { "• `${it}`" }.join('\n') : '• _None_' }
                 def resultEmoji = buildStatus == 'SUCCESS' ? ':white_check_mark:' : (buildStatus == 'UNSTABLE' ? ':warning:' : ':x:')
                 def msg = """
@@ -135,10 +146,10 @@ ${resultEmoji} *Build ${buildStatus}*
 *Duration:* ${currentBuild.durationString?.replace(' and counting', '') ?: 'n/a'}
 
 *Test summary*
-• Total: ${summary.total ?: 0}
+• Total: ${summary.TOTAL ?: 0}
 • Passed: ${passedTests.size()}
 • Failed: ${failedTests.size()}
-• Skipped: ${summary.skipped ?: 0}
+• Skipped: ${summary.SKIPPED ?: 0}
 
 *Passed tests*
 ${formatTests(passedTests)}
@@ -149,7 +160,11 @@ ${formatTests(failedTests)}
 *Build URL:* ${env.BUILD_URL}
 """.stripIndent().trim()
 
-                slackSend(color: color, message: msg)
+                try {
+                    slackSend(color: color, message: msg)
+                } catch (notifyErr) {
+                    echo "Slack notification failed: ${notifyErr}"
+                }
             }
         }
     }
