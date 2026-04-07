@@ -135,8 +135,8 @@ $summaryLines -join "`n"
                     }
                 }
 
-                def passedTests = (summary.PASSED_LIST ?: '__NONE__') == '__NONE__' ? [] : (summary.PASSED_LIST.split(' \|\| ') as List)
-                def failedTests = (summary.FAILED_LIST ?: '__NONE__') == '__NONE__' ? [] : (summary.FAILED_LIST.split(' \|\| ') as List)
+                def passedTests = (summary.PASSED_LIST ?: '__NONE__') == '__NONE__' ? [] : (summary.PASSED_LIST.split(/\s*\|\|\s*/) as List)
+                def failedTests = (summary.FAILED_LIST ?: '__NONE__') == '__NONE__' ? [] : (summary.FAILED_LIST.split(/\s*\|\|\s*/) as List)
                 def formatTests = { List tests -> tests ? tests.collect { "• `${it}`" }.join('\n') : '• _None_' }
                 def resultEmoji = buildStatus == 'SUCCESS' ? ':white_check_mark:' : (buildStatus == 'UNSTABLE' ? ':warning:' : ':x:')
                 def msg = """
