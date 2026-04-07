@@ -1,5 +1,6 @@
-package org.example.api;
+package org.example.api.auth;
 
+import org.example.api.base.BaseApiTest;
 import org.testng.annotations.Test;
 
 import static io.restassured.RestAssured.given;
@@ -60,3 +61,4 @@ public class AuthApiTest extends BaseApiTest {
                 .time(lessThan(RESPONSE_TIME_THRESHOLD_MS));
     }
 }
+

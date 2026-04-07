@@ -79,7 +79,7 @@ pipeline {
             archiveArtifacts artifacts: 'target/site/**',              allowEmptyArchive: true
 
             script {
-                // Parse the JUnit XML so Slack can show the exact passed and failed test names.
+                // Parse JUnit XML for summary counts and failed test names for Slack.
                 def buildStatus = currentBuild.currentResult ?: 'SUCCESS'
                 def color = buildStatus == 'SUCCESS' ? 'good' : (buildStatus == 'UNSTABLE' ? 'warning' : 'danger')
                 def reportText = ''
@@ -88,7 +88,7 @@ pipeline {
                         returnStdout: true,
                         script: '''
 $files = Get-ChildItem -Path 'target/surefire-reports' -Filter 'TEST-*.xml' -ErrorAction SilentlyContinue
-$passed = New-Object System.Collections.Generic.List[string]
+$passedCount = 0
 $failed = New-Object System.Collections.Generic.List[string]
 $skipped = 0
 $total = 0
@@ -106,17 +106,16 @@ foreach ($file in $files) {
         } elseif ($testCase.failure -or $testCase.error) {
             $failed.Add($displayName)
         } else {
-            $passed.Add($displayName)
+            $passedCount++
         }
     }
 }
 
 $summaryLines = @(
     "TOTAL=$total"
-    "PASSED=$($passed.Count)"
+    "PASSED=$passedCount"
     "FAILED=$($failed.Count)"
     "SKIPPED=$skipped"
-    "PASSED_LIST=$(if ($passed.Count -gt 0) { $passed -join ' || ' } else { '__NONE__' })"
     "FAILED_LIST=$(if ($failed.Count -gt 0) { $failed -join ' || ' } else { '__NONE__' })"
 )
 
@@ -124,7 +123,7 @@ $summaryLines -join "`n"
 '''
                     ).trim()
                 } catch (e) {
-                    reportText = 'TOTAL=0\nPASSED=0\nFAILED=0\nSKIPPED=0\nPASSED_LIST=__NONE__\nFAILED_LIST=__NONE__'
+                    reportText = 'TOTAL=0\nPASSED=0\nFAILED=0\nSKIPPED=0\nFAILED_LIST=__NONE__'
                 }
 
                 def summary = [:]
@@ -135,9 +134,9 @@ $summaryLines -join "`n"
                     }
                 }
 
-                def passedTests = (summary.PASSED_LIST ?: '__NONE__') == '__NONE__' ? [] : (summary.PASSED_LIST.split(/\s*\|\|\s*/) as List)
                 def failedTests = (summary.FAILED_LIST ?: '__NONE__') == '__NONE__' ? [] : (summary.FAILED_LIST.split(/\s*\|\|\s*/) as List)
-                def formatTests = { List tests -> tests ? tests.collect { "• `${it}`" }.join('\n') : '• _None_' }
+                def formatTests = { List tests -> tests.collect { "• `${it}`" }.join('\n') }
+                def failedTestsSection = failedTests ? "\n\n*Failed tests*\n${formatTests(failedTests)}" : ''
                 def resultEmoji = buildStatus == 'SUCCESS' ? ':white_check_mark:' : (buildStatus == 'UNSTABLE' ? ':warning:' : ':x:')
                 def msg = """
 ${resultEmoji} *Build ${buildStatus}*
@@ -147,15 +146,10 @@ ${resultEmoji} *Build ${buildStatus}*
 
 *Test summary*
 • Total: ${summary.TOTAL ?: 0}
-• Passed: ${passedTests.size()}
-• Failed: ${failedTests.size()}
+• Passed: ${summary.PASSED ?: 0}
+• Failed: ${summary.FAILED ?: 0}
 • Skipped: ${summary.SKIPPED ?: 0}
-
-*Passed tests*
-${formatTests(passedTests)}
-
-*Failed tests*
-${formatTests(failedTests)}
+${failedTestsSection}
 
 *Build URL:* ${env.BUILD_URL}
 """.stripIndent().trim()

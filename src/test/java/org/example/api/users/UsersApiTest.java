@@ -1,5 +1,6 @@
-package org.example.api;
+package org.example.api.users;
 
+import org.example.api.base.BaseApiTest;
 import org.testng.annotations.Test;
 
 import static io.restassured.RestAssured.given;
@@ -131,3 +132,4 @@ public class UsersApiTest extends BaseApiTest {
                 .body("id", notNullValue());
     }
 }
+

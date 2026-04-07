@@ -1,5 +1,6 @@
-package org.example.api;
+package org.example.api.products;
 
+import org.example.api.base.BaseApiTest;
 import org.testng.annotations.Test;
 
 import static io.restassured.RestAssured.given;
@@ -191,3 +192,4 @@ public class ProductsApiTest extends BaseApiTest {
                 .body("id", notNullValue());
     }
 }
+
