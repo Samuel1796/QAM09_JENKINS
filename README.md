@@ -1,6 +1,6 @@
 # Jenkins CI/CD API Testing
 
-Automated REST API test suite for the [FakeStore API](https://fakestoreapi.com/), integrated with a Jenkins CI/CD pipeline. Tests are written in Java using REST Assured and TestNG, with property-based tests powered by jqwik. The pipeline runs on every GitHub push via webhook, publishes JUnit XML and HTML reports, and sends Slack notifications on build completion.
+Automated REST API test suite for the [FakeStore API](https://fakestoreapi.com/), integrated with a Jenkins CI/CD pipeline. Tests are written in Java using REST Assured and TestNG, with property-based tests powered by jqwik. The pipeline runs on every GitHub push via webhook, publishes JUnit XML, Surefire HTML, and Allure reports, and sends structured Slack notifications on build completion.
 
 ---
 
@@ -28,7 +28,9 @@ mvn surefire-report:report
 
 Reports are written to:
 - JUnit XML: `target/surefire-reports/*.xml`
-- HTML report: `target/surefire-reports/*.html`
+- Surefire HTML report: `target/site/surefire-report.html`
+- Allure results: `target/allure-results/`
+- Allure report: `target/allure-report/`
 
 ---
 
@@ -44,7 +46,7 @@ docker build -t fakestore-api-tests .
 docker run --rm -v "$(pwd)/target:/app/target" fakestore-api-tests
 ```
 
-Reports will be available in your local `target/` directory after the container exits.
+Reports will be available in your local `target/` directory after the container exits, including the Allure results folder.
 
 ---
 
@@ -118,6 +120,8 @@ After saving, every push to the configured branch will automatically trigger the
 | Checkout | Clones the repository |
 | Build & Install Deps | Downloads Maven dependencies (`mvn dependency:resolve`) |
 | Run Tests | Executes the full test suite (`mvn test`) |
-| Publish Reports | Archives JUnit XML results and publishes the HTML report |
+| Generate Allure Report | Builds the Allure HTML report under `target/allure-report/` |
+| Generate Surefire HTML Report | Builds the Maven test report under `target/site/` |
+| Publish Reports | Archives JUnit XML results and publishes the Surefire HTML report |
 
-Build results and reports are accessible from the Jenkins build page. Slack notifications are sent on both success and failure.
+Build results and reports are accessible from the Jenkins build page. Slack notifications are sent on both success and failure, and include the passed/failed test names plus a test count summary.

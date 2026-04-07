@@ -1,6 +1,6 @@
 # Jenkins CI/CD Setup Guide
 
-Step-by-step instructions to connect this project to a local Jenkins instance via GitHub webhook, using ngrok to expose Jenkins to the internet.
+Step-by-step instructions to connect this project to a local Jenkins instance via GitHub webhook, using ngrok to expose Jenkins to the internet. The pipeline publishes JUnit XML, Surefire HTML, and Allure artifacts from the Maven `target/` directory, then sends a structured Slack summary with passed and failed test names.
 
 ---
 
@@ -236,7 +236,10 @@ After the build completes:
 
 - **JUnit trend graph**: visible on the job's main page.
 - **Surefire HTML report**: click **Surefire HTML Report** in the left sidebar of the build.
-- **Allure report**: the `target/allure-results/` folder is archived. To view it locally after pulling the workspace:
+- **Allure results**: archived under `target/allure-results/`.
+- **Allure HTML report**: generated under `target/allure-report/`.
+
+To view the Allure report locally after pulling the workspace:
 
 ```bash
 mvn allure:serve
